@@ -1,0 +1,128 @@
+# Environment files (all levels)
+.env
+.env.*
+**/.env
+**/.env.*
+.env.example
+**/.env.example
+.envrc
+**/.envrc
+*.env
+*.env.*
+**/*.env
+**/*.env.*
+*.env.example
+**/*.env.example
+
+# Dependencies (all levels)
+node_modules/
+**/node_modules/
+
+# OS / editor junk
+.DS_Store
+**/.DS_Store
+Thumbs.db
+**/Thumbs.db
+ehthumbs.db
+**/ehthumbs.db
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.swp
+*.swo
+**/*.swp
+**/*.swo
+
+# Databases / data snapshots
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal
+**/*.sqlite
+**/*.sqlite3
+**/*.db
+**/*.sqlite-shm
+**/*.sqlite-wal
+**/*.sqlite-journal
+*.dump
+**/*.dump
+
+# Private keys / certs
+*.pem
+*.key
+*.jks
+*.p12
+*.pfx
+*.cer
+*.crt
+**/*.pem
+**/*.key
+**/*.jks
+**/*.p12
+**/*.pfx
+**/*.cer
+**/*.crt
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+
+# Credentials / service-account files
+credentials.json
+**/credentials.json
+service-account*.json
+**/service-account*.json
+
+# Logs
+*.log
+**/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+**/logs/
+
+# Build output
+dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
+.next/
+**/.next/
+coverage/
+**/coverage/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Generated / caches
+.cache/
+**/.cache/
+tmp/
+**/tmp/
+temp/
+**/temp/
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+**/*.pyc
+.venv/
+**/.venv/
+venv/
+**/venv/
+
+# Claude / AI tool artifacts
+.claude/
+**/.claude/
+.windsurf/
+**/.windsurf/
+
+# Markdown files
+*.md
+**/*.md
