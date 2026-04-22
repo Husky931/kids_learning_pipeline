@@ -4,6 +4,8 @@
 **Swagger:** `http://localhost:8888/api/v1/docs/` (auto-generated from JSDoc in `src/api/v1/**/*.js`, configured in `src/config/swagger.js`)
 **Auth:** All endpoints require `Authorization: Bearer <JWT>` header
 
+**Legend:** `[x]` pass, `[ ]` not yet, `[o]` failed. Run date: 2026-04-22 against server running in `NODE_ENV=mockup` (still hits real Postgres `yyddp_dev` via Prisma — mockup mode only flips mock auth helpers, not the DB). `SESSION_ID` used below = **5** (returned by Test 1).
+
 ---
 
 ## How these endpoints map to the kid using the app
@@ -45,7 +47,7 @@ TOKEN="<paste token here>"
 
 ---
 
-## Test 1: Start a learning session
+## Test 1: Start a learning session  `[x]`
 
 > **User scenario:** The kid taps on an activity card (say, a "matching game" card inside Day 1 of Part 1). The app opens the activity screen and in the background fires this request to create a server-side session that will track everything the kid does during this activity.
 
@@ -69,9 +71,11 @@ curl -X POST http://localhost:8888/api/v1/sessions/start \
 }
 ```
 
+**Result:** Pass — got `ret_code: 0` with `learning_session_id: 5` (auto-increment, prior sessions 1–4 already existed in `user_activity_learning_sessions`), `activity_id: 2`, `day_id: 100100101`. Server confirmed activity 2 exists and is linked to day 100100101 in `day_activities`.
+
 ---
 
-## Test 2: Submit a video interaction
+## Test 2: Submit a video interaction  `[x]`
 
 > **User scenario:** The activity contains a short English video. The kid watches 120 out of 150 seconds (85%). When the video ends (or the kid taps "next"), the app sends the watch stats to the server. Since the kid watched more than 80%, the server considers it "correct" and awards 1 gold coin.
 
@@ -106,9 +110,11 @@ curl -X POST http://localhost:8888/api/v1/sessions/SESSION_ID/interactions \
 }
 ```
 
+**Result:** Pass — matched the expected body exactly. `watched_percentage: 85` clears the 80% threshold in `sessionService.js:14` (`INTERACTION_HANDLERS.video.isCorrect`), so `is_correct: true` and the gold rule fires → `coins_awarded: 1`.
+
 ---
 
-## Test 3: Submit an audiopickcard interaction
+## Test 3: Submit an audiopickcard interaction  `[x]`
 
 > **User scenario:** The app plays an English audio clip ("apple") and shows 4 cards with different words. The kid taps a card. The app sends which card was selected, which was correct, and whether the kid got it right. If correct, 1 gold coin is awarded instantly — the kid sees a coin animation on screen.
 
@@ -130,9 +136,14 @@ curl -X POST http://localhost:8888/api/v1/sessions/SESSION_ID/interactions \
 
 **Expected:** `coins_awarded: 1` when `is_correct: true`, `coins_awarded: 0` when false.
 
+**Result:** Pass, both branches. Grabbed real audiopickcard interaction IDs from Postgres (`SELECT interaction_id, type FROM interactions WHERE type='audiopickcard' LIMIT 5;` → `1000000005`, `1000000070`, …).
+- `interaction_id: 1000000005` with `is_correct: true` → `coins_awarded: 1` ✓
+- `interaction_id: 1000000070` with `is_correct: false` → `coins_awarded: 0` ✓
+  That's the `audiopickcard.isCorrect` rule in `sessionService.js:25` passing `d.is_correct` straight through, so no coin when the kid picks the wrong card.
+
 ---
 
-## Test 4: Complete the session
+## Test 4: Complete the session  `[x]`
 
 > **User scenario:** The kid has finished all the interactions in the activity (watched the video, answered the quiz, did the matching). The app shows a "great job!" screen and in the background tells the server this activity is done. The server awards the activity completion bonus (10 coins), updates the kid's progress to COMPLETED, and returns the new total coin balance that the app displays.
 
@@ -158,9 +169,11 @@ curl -X POST http://localhost:8888/api/v1/sessions/SESSION_ID/complete \
 }
 ```
 
+**Result:** Pass — `completed: true`, `already_completed: false`, `reward_coins: 10` (activity 2's `reward_coins` is 0 in the DB, so the default-10 fallback kicks in as the doc calls out), `total_coins: 23`. Higher than the example's `11` because user 1 already had a coin balance from earlier runs: 23 = 11 prior + 1 (Test 2 video) + 1 (Test 3a audiopickcard) + 0 (Test 3b wrong answer) + 10 (this completion bonus). Matches the expected shape.
+
 ---
 
-## Test 5: Idempotency — complete again
+## Test 5: Idempotency — complete again  `[x]`
 
 > **User scenario:** The kid's phone had bad signal. The "complete" request was sent but the app didn't get a response, so it retried. The server recognizes this session was already completed and returns success without awarding coins again. This prevents the "free coins" exploit where a kid (or a clever parent) could replay the completion request.
 
@@ -187,9 +200,11 @@ curl -X POST http://localhost:8888/api/v1/sessions/SESSION_ID/complete \
 }
 ```
 
+**Result:** Pass — second call to `/complete` on session 5 returned `already_completed: true` and omitted `total_coins` (no re-award). That's the anti-double-pay guard working: the server sees the existing completion row in `user_progress`/session state and short-circuits the gold service instead of granting another 10 coins.
+
 ---
 
-## Test 6: Get course progress
+## Test 6: Get course progress  `[x]`
 
 > **User scenario:** The kid (or parent) opens the course overview screen. The app needs to show which activities are done, which are available, and which are still locked — plus how many total coins the kid has earned in this course. This endpoint returns the entire course tree so the app can render it.
 
@@ -231,9 +246,13 @@ curl -X GET http://localhost:8888/api/v1/courses/1/progress \
 
 ---
 
+**Result:** Pass — got `course_id: 1`, `course_name: "Course 1"`, `total_activities: 343`, `completed_activities: 1`, `total_coins_earned: 10`. Activity 2 inside day 100100101 shows `status: "COMPLETED"` with `coins_awarded: 10`; activity 1 shows `status: "LOCKED"`. Matches the expected tree shape and confirms Test 4's completion was persisted into `user_progress`.
+
+---
+
 ## Error cases
 
-### No auth token
+### No auth token  `[x]`
 
 > The app forgot to include the JWT, or the token expired.
 
@@ -245,7 +264,9 @@ curl -X POST http://localhost:8888/api/v1/sessions/start \
 
 **Expected:** `ret_code: 600001` (用户未登录), HTTP 401.
 
-### Activity not found
+**Result:** Pass — HTTP 401 + `ret_code: 600001` with message `"用户未登录"` and detail `"Authentication required. Please provide a valid JWT token."`. `authMiddleware` short-circuits before the controller sees the request, which is the expected guard.
+
+### Activity not found  `[x]`
 
 > The app sent an activity_id that doesn't exist in the database — maybe the content was removed in a re-import, or the app has stale data.
 
@@ -258,7 +279,9 @@ curl -X POST http://localhost:8888/api/v1/sessions/start \
 
 **Expected:** `ret_code: 101003` (Activity not found), HTTP 404.
 
-### Submit to completed session
+**Result:** Pass — HTTP 404 + `ret_code: 101003` with `"Activity not found"` and `details: { activity_id: 999999 }`. Thrown by `sessionService.js:66` where the `activities.findFirst` lookup returns null for the bogus ID.
+
+### Submit to completed session  `[x]`
 
 > The app tries to submit more interactions after the session has already been marked complete. This shouldn't happen in normal flow but guards against bugs or replays.
 
@@ -270,6 +293,8 @@ curl -X POST http://localhost:8888/api/v1/sessions/SESSION_ID/interactions \
 ```
 
 **Expected:** `ret_code: 400002` (Session already completed), HTTP 400.
+
+**Result:** Pass — HTTP 400 + `ret_code: 400002` with `"Session already completed"` and `details: { learning_session_id: 5 }`. Session 5 was finalised in Test 4, so trying to append more interactions is correctly rejected — this is the guard against replay/late submissions the doc describes.
 
 ---
 
