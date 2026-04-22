@@ -14,6 +14,12 @@
 *.env.example
 **/*.env.example
 
+# Allow committed dev/prod .env templates
+!.env.dev.example
+!.env.prod.example
+!**/.env.dev.example
+!**/.env.prod.example
+
 # Dependencies (all levels)
 node_modules/
 **/node_modules/
@@ -123,6 +129,6 @@ venv/
 .windsurf/
 **/.windsurf/
 
-# Markdown files
-*.md
-**/*.md
+# # Markdown files
+# *.md
+# **/*.md
