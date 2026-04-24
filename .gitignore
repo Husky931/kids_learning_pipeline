@@ -123,6 +123,10 @@ __pycache__/
 venv/
 **/venv/
 
+# Nginx SSL / Let's Encrypt (prod server)
+nginx/certs/
+nginx/certbot-webroot/
+
 # Claude / AI tool artifacts
 .claude/
 **/.claude/
